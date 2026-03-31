@@ -9,14 +9,19 @@ import ingredientmanagement.service.IngredientService;
 
 import java.time.Instant;
 import java.util.List;
+import ingredientmanagement.dto.StockMovementCreateRequest;
+import ingredientmanagement.entity.StockMovement;
+import ingredientmanagement.service.StockMovementService;
 
 @RestController
 public class IngredientController {
 
     private final IngredientService ingredientService;
+    private final StockMovementService stockMovementService;
 
-    public IngredientController(IngredientService ingredientService) {
+    public IngredientController(IngredientService ingredientService, StockMovementService stockMovementService) {
         this.ingredientService = ingredientService;
+        this.stockMovementService = stockMovementService;
     }
 
     @GetMapping("/ingredients")
@@ -68,5 +73,55 @@ public class IngredientController {
 
         StockValue stockValue = ingredientService.getStockAt(id, atInstant, unitEnum);
         return ResponseEntity.ok(stockValue);
+    }
+
+    @GetMapping("/ingredients/{id}/stockMovements")
+    public ResponseEntity<?> getStockMovements(
+            @PathVariable Integer id,
+            @RequestParam String from,
+            @RequestParam String to) {
+
+        Ingredient ingredient = ingredientService.getIngredientById(id);
+        if (ingredient == null) {
+            return ResponseEntity.status(404)
+                    .body("Ingredient.id=" + id + " is not found");
+        }
+
+        Instant fromInstant;
+        Instant toInstant;
+        try {
+            fromInstant = Instant.parse(from);
+        } catch (Exception e) {
+            return ResponseEntity.status(400)
+                    .body("Invalid value for `from` parameter. Expected ISO-8601 format (e.g. 2024-01-06T12:00:00Z).");
+        }
+        try {
+            toInstant = Instant.parse(to);
+        } catch (Exception e) {
+            return ResponseEntity.status(400)
+                    .body("Invalid value for `to` parameter. Expected ISO-8601 format (e.g. 2024-01-06T12:00:00Z).");
+        }
+        if (fromInstant.isAfter(toInstant)) {
+            return ResponseEntity.status(400)
+                    .body("`from` must be before or equal to `to`.");
+        }
+
+        List<StockMovement> movements = stockMovementService.getStockMovementsByIngredientAndDateRange(id, fromInstant, toInstant);
+        return ResponseEntity.ok(movements);
+    }
+
+    @PostMapping("/ingredients/{id}/stockMovements")
+    public ResponseEntity<?> addStockMovements(
+            @PathVariable Integer id,
+            @RequestBody List<StockMovementCreateRequest> requests) {
+
+        Ingredient ingredient = ingredientService.getIngredientById(id);
+        if (ingredient == null) {
+            return ResponseEntity.status(404)
+                    .body("Ingredient.id=" + id + " is not found");
+        }
+
+        List<StockMovement> created = stockMovementService.createStockMovements(id, requests);
+        return ResponseEntity.ok(created);
     }
 }
