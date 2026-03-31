@@ -6,6 +6,10 @@ import ingredientmanagement.entity.UnitEnum;
 import ingredientmanagement.repository.StockMovementRepository;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.ArrayList;
+import ingredientmanagement.dto.StockMovementCreateRequest;
+import ingredientmanagement.entity.StockMovement;
 
 @Service
 public class StockMovementService {
@@ -18,5 +22,20 @@ public class StockMovementService {
 
     public StockValue getStockValueAt(Integer ingredientId, Instant at, UnitEnum unit) {
         return stockMovementRepository.getStockValueAt(ingredientId, at, unit);
+    }
+
+    public List<StockMovement> getStockMovementsByIngredientAndDateRange(Integer ingredientId, Instant from, Instant to) {
+        return stockMovementRepository.findByIngredientIdAndDateRange(ingredientId, from, to);
+    }
+
+    public List<StockMovement> createStockMovements(Integer ingredientId, List<StockMovementCreateRequest> requests) {
+        List<StockMovement> created = new ArrayList<>();
+        for (StockMovementCreateRequest req : requests) {
+            StockMovement sm = stockMovementRepository.createStockMovement(
+                ingredientId, req.getValue(), req.getUnit(), req.getType()
+            );
+            created.add(sm);
+        }
+        return created;
     }
 }
