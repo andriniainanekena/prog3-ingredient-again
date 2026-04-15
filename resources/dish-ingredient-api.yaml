@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: Restaurant Inventory & Dish Management API
+  description: API for managing ingredients, dishes, and stock levels in a restaurant system.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /ingredients:
+    get:
+      summary: Retrieve all ingredients
+      description: |
+        Returns a list of all ingredients stored in the system.
+        Each ingredient includes:
+        - id
+        - name
+        - category
+        - price
+      operationId: getAllIngredients
+      tags:
+        - Ingredients
+      responses:
+        '200':
+          description: Ingredients successfully retrieved
+        '500':
+          description: Unexpected server error
+
+  /ingredients/{id}:
+    get:
+      summary: Retrieve a specific ingredient
+      description: |
+        Returns the ingredient corresponding to the provided ID.
+      operationId: getIngredientById
+      tags:
+        - Ingredients
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Ingredient unique identifier
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Ingredient successfully retrieved
+        '404':
+          description: Ingredient not found
+        '500':
+          description: Unexpected server error
+
+  /ingredients/{id}/stock:
+    get:
+      summary: Retrieve ingredient stock at a given time
+      description: |
+        Returns the stock level of a specific ingredient at a given timestamp.
+
+        Required query parameters:
+        - at: timestamp (ISO-8601 format)
+        - unit: desired unit (PCS, KG, L)
+      operationId: getIngredientStock
+      tags:
+        - Ingredients
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Ingredient unique identifier
+          schema:
+            type: integer
+        - name: at
+          in: query
+          required: true
+          description: Timestamp used to calculate stock
+          schema:
+            type: string
+            format: date-time
+        - name: unit
+          in: query
+          required: true
+          description: Unit for the stock value
+          schema:
+            type: string
+            enum: [PCS, KG, L]
+      responses:
+        '200':
+          description: Stock successfully retrieved
+        '400':
+          description: Missing or invalid query parameters
+        '404':
+          description: Ingredient not found
+        '500':
+          description: Unexpected server error
+
+  /dishes:
+    get:
+      summary: Retrieve all dishes
+      description: |
+        Returns all dishes along with their associated ingredients.
+
+        Each dish includes:
+        - id
+        - name
+        - sellingPrice
+        - ingredients (list)
+      operationId: getAllDishes
+      tags:
+        - Dishes
+      responses:
+        '200':
+          description: Dishes successfully retrieved
+        '500':
+          description: Unexpected server error
+
+  /dishes/{id}/ingredients:
+    put:
+      summary: Update ingredients of a dish
+      description: |
+        Updates the list of ingredients associated with a dish.
+
+        Behavior:
+        - Adds or removes ingredient associations
+        - Does NOT modify ingredient data
+        - Unknown ingredient IDs are ignored
+
+        The request body must contain a non-empty list of ingredient objects.
+      operationId: updateDishIngredients
+      tags:
+        - Dishes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Dish unique identifier
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        description: List of ingredients to associate with the dish
+      responses:
+        '200':
+          description: Dish ingredients successfully updated
+        '400':
+          description: Invalid or missing request body
+        '404':
+          description: Dish not found
+        '500':
+          description: Unexpected server error
+
+components:
+  schemas:
+    IngredientResponse:
+      type: object
+      required: [id, name, category, price]
+      properties:
+        id:
+          type: integer
+          description: Ingredient unique identifier
+        name:
+          type: string
+          description: Ingredient name
+        category:
+          type: string
+          description: Ingredient category
+          enum: [VEGETABLE, ANIMAL, MARINE, DAIRY, OTHER]
+        price:
+          type: number
+          format: double
+          description: Ingredient price
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Error description
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        path:
+          type: string
+          description: Request path
+
+    StockResponse:
+      type: object
+      required: [unit, quantity]
+      properties:
+        unit:
+          type: string
+          enum: [PCS, KG, L]
+          description: Measurement unit
+        quantity:
+          type: number
+          format: double
+          description: Stock quantity
+
+    DishResponse:
+      type: object
+      required: [id, name, ingredients]
+      properties:
+        id:
+          type: integer
+          description: Dish unique identifier
+        name:
+          type: string
+          description: Dish name
+        sellingPrice:
+          type: number
+          format: double
+          nullable: true
+          description: Selling price (nullable if not defined)
+        ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngredientResponse'
+
+    DishIngredientRequest:
+      type: object
+      required: [ingredientId, quantity, unit]
+      properties:
+        ingredientId:
+          type: integer
+          description: Ingredient identifier
+        quantity:
+          type: number
+          format: double
+          description: Required quantity
+        unit:
+          type: string
+          enum: [PCS, KG, L]
+          description: Measurement unit
